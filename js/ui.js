@@ -2,39 +2,45 @@ import { weatherCodes } from "./weatherCodes.js";
 
 const forecastContainer = document.querySelector("#forecast-grid");
 const favoritesContainer = document.querySelector("#favorites-list");
+const cityResults = document.querySelector("#city-results");
+const unitToggle = document.querySelector("#unit-toggle");
+const unitStorageKey = "solstice-temperature-unit";
+let temperatureUnit = "C";
+let lastWeather;
 
 function getForecastDay(dateString, index) {
-  if (index === 0) return "Today";
   const [year, month, day] = dateString.split("-").map(Number);
-  return new Intl.DateTimeFormat(undefined, { weekday: "short" }).format(new Date(year, month - 1, day));
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: "short",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year, month - 1, day)));
 }
 
 function getWeatherCode(code) {
   return weatherCodes[code] ?? { label: "Unknown conditions", emoji: "🌡️" };
 }
 
-export function renderWeather(city, forecast) {
-  const current = forecast.current;
-  const currentCondition = getWeatherCode(current.weather_code);
-  const daily = forecast.daily;
+function formatTemperature(celsius) {
+  const temperature = temperatureUnit === "F" ? (celsius * 9) / 5 + 32 : celsius;
+  return `${Math.round(temperature)}°`;
+}
 
-  document.querySelector("#city-name").textContent = city.name;
-  document.querySelector("#country-name").textContent = city.country || "";
-  document.querySelector("#temperature").textContent = `${Math.round(current.temperature_2m)}°`;
-  document.querySelector("#condition").textContent = currentCondition.label;
-  document.querySelector("#condition-icon").textContent = currentCondition.emoji;
-  document.querySelector("#wind-speed").textContent = `${Math.round(current.wind_speed_10m)} km/h`;
-  document.querySelector("#humidity").textContent = `${current.relative_humidity_2m}%`;
+function updateUnitToggle() {
+  unitToggle.querySelectorAll("button[data-unit]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.unit === temperatureUnit));
+  });
+}
 
+function renderForecast(daily) {
   forecastContainer.replaceChildren(
     ...daily.time.map((date, index) => {
-      const high = Math.round(daily.temperature_2m_max[index]);
-      const low = Math.round(daily.temperature_2m_min[index]);
+      const high = formatTemperature(daily.temperature_2m_max[index]);
+      const low = formatTemperature(daily.temperature_2m_min[index]);
       const condition = getWeatherCode(daily.weather_code[index]);
       const dayName = getForecastDay(date, index);
       const card = document.createElement("article");
       card.className = "forecast-card";
-      card.setAttribute("aria-label", `${dayName}, ${condition.label}, high ${high} degrees, low ${low} degrees`);
+      card.setAttribute("aria-label", `${dayName}, ${condition.label}, high ${high}, low ${low}`);
 
       const day = document.createElement("span");
       day.className = "forecast-day";
@@ -48,16 +54,93 @@ export function renderWeather(city, forecast) {
       const temperatures = document.createElement("span");
       temperatures.className = "forecast-temperatures";
       const highTemperature = document.createElement("span");
-      highTemperature.textContent = `${high}°`;
+      highTemperature.textContent = high;
       const lowTemperature = document.createElement("span");
       lowTemperature.className = "forecast-low";
-      lowTemperature.textContent = `${low}°`;
+      lowTemperature.textContent = low;
       temperatures.append(highTemperature, lowTemperature);
 
       card.append(day, weatherIcon, temperatures);
       return card;
     }),
   );
+}
+
+function renderCurrentWeather(city, forecast) {
+  const current = forecast.current;
+  const currentCondition = getWeatherCode(current.weather_code);
+
+  document.querySelector("#city-name").textContent = city.name;
+  document.querySelector("#country-name").textContent = [city.region, city.country].filter(Boolean).join(", ");
+  document.querySelector("#temperature").textContent = formatTemperature(current.temperature_2m);
+  document.querySelector("#condition").textContent = currentCondition.label;
+  document.querySelector("#condition-icon").textContent = currentCondition.emoji;
+  document.querySelector("#wind-speed").textContent = `${Math.round(current.wind_speed_10m)} km/h`;
+  document.querySelector("#humidity").textContent = `${current.relative_humidity_2m}%`;
+}
+
+export function renderWeather(city, forecast) {
+  lastWeather = { city, forecast };
+  renderCurrentWeather(city, forecast);
+  renderForecast(forecast.daily);
+}
+
+export function getTemperatureUnit() {
+  try {
+    const storedUnit = localStorage.getItem(unitStorageKey);
+    if (storedUnit === "C" || storedUnit === "F") temperatureUnit = storedUnit;
+  } catch (error) {
+    console.warn("Could not read the saved temperature unit.", error);
+  }
+  updateUnitToggle();
+  return temperatureUnit;
+}
+
+export function setTemperatureUnit(unit) {
+  if (unit !== "C" && unit !== "F") return;
+  temperatureUnit = unit;
+  updateUnitToggle();
+
+  try {
+    localStorage.setItem(unitStorageKey, unit);
+  } catch (error) {
+    console.warn("Could not save the temperature unit.", error);
+  }
+
+  if (lastWeather) {
+    renderCurrentWeather(lastWeather.city, lastWeather.forecast);
+    renderForecast(lastWeather.forecast.daily);
+  }
+}
+
+export function renderCityChoices(cities) {
+  cityResults.replaceChildren(
+    ...cities.map((city, index) => {
+      const button = document.createElement("button");
+      button.className = "city-result";
+      button.type = "button";
+      button.dataset.cityIndex = String(index);
+      button.setAttribute("role", "option");
+      button.setAttribute("aria-selected", "false");
+
+      const name = document.createElement("span");
+      name.className = "city-result-name";
+      name.textContent = city.name;
+
+      const location = document.createElement("span");
+      location.className = "city-result-location";
+      location.textContent = [city.region, city.country].filter(Boolean).join(", ");
+
+      button.append(name, location);
+      return button;
+    }),
+  );
+  cityResults.hidden = cities.length === 0;
+}
+
+export function hideCityChoices() {
+  cityResults.replaceChildren();
+  cityResults.hidden = true;
 }
 
 export function renderFavorites(favorites, activeCity) {

@@ -79,6 +79,11 @@ button {
   line-height: 1;
 }
 
+.search-shell {
+  position: relative;
+  min-width: 0;
+}
+
 .search-form {
   display: flex;
   align-items: center;
@@ -139,9 +144,63 @@ button {
 
 .search-form button:focus-visible,
 .favorite-button:focus-visible,
-.brand:focus-visible {
+.brand:focus-visible,
+.city-result:focus-visible,
+.unit-toggle button:focus-visible {
   outline: 3px solid rgba(71, 125, 157, 0.45);
   outline-offset: 3px;
+}
+
+.city-results {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 9px);
+  right: 0;
+  left: 0;
+  display: grid;
+  gap: 5px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid var(--glass-border);
+  border-radius: 17px;
+  background: rgba(248, 252, 255, 0.96);
+  box-shadow: 0 16px 38px rgba(48, 77, 99, 0.18);
+  backdrop-filter: blur(18px);
+}
+
+.city-results[hidden] {
+  display: none;
+}
+
+.city-result {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: background 150ms ease;
+}
+
+.city-result:hover,
+.city-result:focus-visible {
+  background: rgba(217, 234, 245, 0.72);
+}
+
+.city-result-name {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.city-result-location {
+  color: var(--ink-soft);
+  font-size: 11px;
 }
 
 .topbar-note {
@@ -258,6 +317,35 @@ button {
 .condition-icon {
   margin: -9px 0 0 5px;
   font-size: 32px;
+}
+
+.unit-toggle {
+  display: inline-flex;
+  gap: 2px;
+  margin: 0 0 0 auto;
+  padding: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.unit-toggle button {
+  min-width: 35px;
+  padding: 6px 7px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--ink-soft);
+  background: transparent;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 650;
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.unit-toggle button[aria-pressed="true"] {
+  color: var(--blue-deep);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 6px rgba(57, 91, 120, 0.09);
 }
 
 .condition {
@@ -604,6 +692,10 @@ button {
 
   .topbar {
     grid-template-columns: auto minmax(260px, 1fr);
+  }
+
+  .search-shell {
+    width: 100%;
   }
 
   .topbar-note {

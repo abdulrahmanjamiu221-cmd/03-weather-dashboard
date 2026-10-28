@@ -17,19 +17,29 @@
           <span>solstice</span>
         </a>
 
-        <form class="search-form" id="city-search" role="search">
-          <label class="sr-only" for="city-input">Search for a city</label>
-          <span class="search-icon" aria-hidden="true">⌕</span>
-          <input
-            id="city-input"
-            name="city"
-            type="search"
-            placeholder="Search a city..."
-            autocomplete="off"
-            required
-          >
-          <button type="submit">Search</button>
-        </form>
+        <div class="search-shell">
+          <form class="search-form" id="city-search" role="search">
+            <label class="sr-only" for="city-input">Search for a city</label>
+            <span class="search-icon" aria-hidden="true">⌕</span>
+            <input
+              id="city-input"
+              name="city"
+              type="search"
+              placeholder="Search a city..."
+              autocomplete="off"
+              aria-controls="city-results"
+              required
+            >
+            <button type="submit">Search</button>
+          </form>
+          <div
+            class="city-results"
+            id="city-results"
+            role="listbox"
+            aria-label="Matching cities"
+            hidden
+          ></div>
+        </div>
 
         <span class="topbar-note">A little sunshine, wherever you are</span>
       </header>
@@ -49,6 +59,10 @@
               <div class="temperature-line">
                 <span class="temperature" id="temperature">—</span>
                 <span class="condition-icon" id="condition-icon" aria-hidden="true"></span>
+                <div class="unit-toggle" id="unit-toggle" role="group" aria-label="Temperature unit">
+                  <button type="button" data-unit="C" aria-pressed="true">°C</button>
+                  <button type="button" data-unit="F" aria-pressed="false">°F</button>
+                </div>
               </div>
               <p class="condition" id="condition">Waiting for forecast…</p>
             </div>

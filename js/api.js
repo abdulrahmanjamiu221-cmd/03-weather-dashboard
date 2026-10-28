@@ -1,12 +1,13 @@
 const GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
 const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 
-export async function fetchJson(url) {
+export async function fetchJson(url, { signal } = {}) {
   let response;
 
   try {
-    response = await fetch(url);
+    response = await fetch(url, { signal });
   } catch (error) {
+    if (error.name === "AbortError") throw error;
     throw new Error(`Unable to connect to Open-Meteo: ${error.message}`);
   }
 
@@ -21,14 +22,15 @@ export async function fetchJson(url) {
   }
 }
 
-export async function searchCity(name) {
+export async function searchCity(name, options = {}) {
   const query = encodeURIComponent(name.trim());
   const url = `${GEOCODING_URL}?name=${query}&count=5`;
   let data;
 
   try {
-    data = await fetchJson(url);
+    data = await fetchJson(url, options);
   } catch (error) {
+    if (error.name === "AbortError") throw error;
     throw new Error(`Could not search for cities: ${error.message}`);
   }
 
@@ -37,16 +39,17 @@ export async function searchCity(name) {
     throw new Error("Open-Meteo returned an invalid city search result.");
   }
 
-  return data.results.map(({ name: cityName, country, latitude, longitude, timezone }) => ({
+  return data.results.map(({ name: cityName, country, admin1, admin2, latitude, longitude, timezone }) => ({
     name: cityName,
     country,
+    region: admin1 || admin2 || "",
     latitude,
     longitude,
     timezone,
   }));
 }
 
-export async function getForecast(latitude, longitude) {
+export async function getForecast(latitude, longitude, options = {}) {
   const params = new URLSearchParams({
     latitude: String(latitude),
     longitude: String(longitude),
@@ -57,8 +60,9 @@ export async function getForecast(latitude, longitude) {
   let data;
 
   try {
-    data = await fetchJson(`${FORECAST_URL}?${params}`);
+    data = await fetchJson(`${FORECAST_URL}?${params}`, options);
   } catch (error) {
+    if (error.name === "AbortError") throw error;
     throw new Error(`Could not load the forecast: ${error.message}`);
   }
 
