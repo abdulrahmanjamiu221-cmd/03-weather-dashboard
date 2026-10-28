@@ -1,34 +1,51 @@
-import { favoriteCities, getWeather } from "./api.js";
+import { getForecast, searchCity } from "./api.js";
 import { renderFavorites, renderLocalTime, renderWeather, setStatus } from "./ui.js";
 
 const searchForm = document.querySelector("#city-search");
 const cityInput = document.querySelector("#city-input");
-let activeCity = "Oslo";
+const favoriteCities = ["Copenhagen", "Lisbon", "Tokyo"];
+let activeRequest = 0;
 
 async function showCity(cityName) {
-  setStatus("Finding your forecast...");
+  const query = cityName.trim();
+  if (!query) return false;
+
+  const requestId = ++activeRequest;
+  setStatus("Loading…");
 
   try {
-    const weather = await getWeather(cityName);
-    const favorites = await Promise.all(favoriteCities.map((city) => getWeather(city)));
+    const cities = await searchCity(query);
+    if (requestId !== activeRequest) return false;
+    if (cities.length === 0) {
+      setStatus(`We couldn't find "${query}". Check the spelling and try another city.`);
+      return false;
+    }
 
-    renderWeather(weather);
-    renderFavorites(favorites, weather.city);
-    renderLocalTime(weather.timezone);
-    activeCity = weather.city;
+    const city = cities[0];
+    const forecast = await getForecast(city.latitude, city.longitude);
+    if (requestId !== activeRequest) return false;
+
+    renderWeather(city, forecast);
+    renderFavorites(favoriteCities, city.name);
+    renderLocalTime(forecast.timezone || city.timezone);
     setStatus("");
     return true;
   } catch (error) {
-    setStatus(error.message, true);
+    if (requestId !== activeRequest) return false;
+    setStatus(error instanceof Error ? error.message : "Something went wrong while loading the weather.", true);
     return false;
   }
 }
 
 searchForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const didLoad = await showCity(cityInput.value);
-  if (didLoad) {
-    cityInput.value = "";
+  try {
+    const didLoad = await showCity(cityInput.value);
+    if (didLoad) {
+      cityInput.value = "";
+    }
+  } catch (error) {
+    setStatus(error instanceof Error ? error.message : "Something went wrong while loading the weather.", true);
   }
 });
 
@@ -36,13 +53,20 @@ document.querySelector("#favorites-list").addEventListener("click", async (event
   const button = event.target.closest("button[data-city]");
   if (!button) return;
 
-  await showCity(button.dataset.city);
+  try {
+    await showCity(button.dataset.city);
+  } catch (error) {
+    setStatus(error instanceof Error ? error.message : "Something went wrong while loading the weather.", true);
+  }
 });
 
 window.setInterval(() => {
-  getWeather(activeCity)
-    .then((weather) => renderLocalTime(weather.timezone))
-    .catch((error) => console.error("Unable to refresh the local time.", error));
+  const timezone = document.querySelector("#local-time").dataset.timezone;
+  if (timezone) renderLocalTime(timezone);
 }, 60_000);
 
-await showCity(activeCity);
+try {
+  await showCity("Oslo");
+} catch (error) {
+  setStatus(error instanceof Error ? error.message : "Something went wrong while loading the weather.", true);
+}

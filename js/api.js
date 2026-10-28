@@ -1,109 +1,70 @@
-const cities = [
-  {
-    city: "Oslo",
-    country: "Norway",
-    temperature: 8,
-    condition: "Partly cloudy",
-    icon: "🌤️",
-    wind: 12,
-    timezone: "Europe/Oslo",
-    forecast: [
-      [10, 4, "🌤️"],
-      [9, 3, "☁️"],
-      [11, 5, "🌦️"],
-      [12, 6, "☀️"],
-      [10, 4, "🌤️"],
-      [8, 2, "🌧️"],
-      [9, 3, "☁️"],
-    ],
-  },
-  {
-    city: "Copenhagen",
-    country: "Denmark",
-    temperature: 11,
-    condition: "Bright skies",
-    icon: "☀️",
-    wind: 9,
-    timezone: "Europe/Copenhagen",
-    forecast: [
-      [13, 7, "☀️"],
-      [12, 8, "🌤️"],
-      [11, 6, "☁️"],
-      [14, 8, "☀️"],
-      [13, 7, "🌤️"],
-      [10, 5, "🌦️"],
-      [12, 6, "☀️"],
-    ],
-  },
-  {
-    city: "Lisbon",
-    country: "Portugal",
-    temperature: 19,
-    condition: "Mostly sunny",
-    icon: "🌤️",
-    wind: 14,
-    timezone: "Europe/Lisbon",
-    forecast: [
-      [21, 14, "☀️"],
-      [20, 13, "🌤️"],
-      [19, 13, "☀️"],
-      [18, 12, "☁️"],
-      [20, 14, "☀️"],
-      [22, 15, "🌤️"],
-      [21, 14, "☀️"],
-    ],
-  },
-  {
-    city: "Tokyo",
-    country: "Japan",
-    temperature: 16,
-    condition: "Soft sunshine",
-    icon: "🌤️",
-    wind: 7,
-    timezone: "Asia/Tokyo",
-    forecast: [
-      [18, 11, "🌤️"],
-      [17, 12, "🌧️"],
-      [16, 10, "☁️"],
-      [19, 12, "☀️"],
-      [20, 13, "🌤️"],
-      [18, 12, "☀️"],
-      [17, 11, "🌦️"],
-    ],
-  },
-  {
-    city: "London",
-    country: "United Kingdom",
-    temperature: 13,
-    condition: "Light showers",
-    icon: "🌦️",
-    wind: 18,
-    timezone: "Europe/London",
-    forecast: [
-      [14, 9, "🌦️"],
-      [13, 8, "☁️"],
-      [15, 9, "🌤️"],
-      [14, 8, "🌧️"],
-      [16, 10, "☀️"],
-      [15, 9, "🌤️"],
-      [13, 7, "☁️"],
-    ],
-  },
-];
+const GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
+const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 
-const cityIndex = new Map(
-  cities.map((weather) => [weather.city.toLocaleLowerCase(), weather]),
-);
+export async function fetchJson(url) {
+  let response;
 
-export const favoriteCities = ["Copenhagen", "Lisbon", "Tokyo"];
-
-export async function getWeather(cityName) {
-  const normalizedCity = cityName.trim().toLocaleLowerCase();
-  const weather = cityIndex.get(normalizedCity);
-
-  if (!weather) {
-    throw new Error(`No demo forecast is available for "${cityName.trim()}". Try Oslo, Copenhagen, Lisbon, Tokyo, or London.`);
+  try {
+    response = await fetch(url);
+  } catch (error) {
+    throw new Error(`Unable to connect to Open-Meteo: ${error.message}`);
   }
 
-  return weather;
+  if (!response.ok) {
+    throw new Error(`Open-Meteo request failed (${response.status} ${response.statusText}).`);
+  }
+
+  try {
+    return await response.json();
+  } catch (error) {
+    throw new Error(`Open-Meteo returned an invalid response: ${error.message}`);
+  }
+}
+
+export async function searchCity(name) {
+  const query = encodeURIComponent(name.trim());
+  const url = `${GEOCODING_URL}?name=${query}&count=5`;
+  let data;
+
+  try {
+    data = await fetchJson(url);
+  } catch (error) {
+    throw new Error(`Could not search for cities: ${error.message}`);
+  }
+
+  if (data.results === undefined) return [];
+  if (!Array.isArray(data.results)) {
+    throw new Error("Open-Meteo returned an invalid city search result.");
+  }
+
+  return data.results.map(({ name: cityName, country, latitude, longitude, timezone }) => ({
+    name: cityName,
+    country,
+    latitude,
+    longitude,
+    timezone,
+  }));
+}
+
+export async function getForecast(latitude, longitude) {
+  const params = new URLSearchParams({
+    latitude: String(latitude),
+    longitude: String(longitude),
+    current: "temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m",
+    daily: "weather_code,temperature_2m_max,temperature_2m_min",
+    timezone: "auto",
+  });
+  let data;
+
+  try {
+    data = await fetchJson(`${FORECAST_URL}?${params}`);
+  } catch (error) {
+    throw new Error(`Could not load the forecast: ${error.message}`);
+  }
+
+  if (!data.current || !data.daily) {
+    throw new Error("Open-Meteo returned incomplete forecast data.");
+  }
+
+  return data;
 }
