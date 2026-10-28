@@ -41,7 +41,13 @@
           ></div>
         </div>
 
-        <span class="topbar-note">A little sunshine, wherever you are</span>
+        <div class="header-actions">
+          <button class="location-button" id="location-button" type="button">
+            <span aria-hidden="true">⌖</span>
+            Use my location
+          </button>
+          <span class="topbar-note">A little sunshine, wherever you are</span>
+        </div>
       </header>
 
       <div class="status-area">
@@ -51,11 +57,22 @@
 
       <main class="dashboard">
         <div class="main-column">
-          <section class="weather-card glass-card" aria-labelledby="current-heading">
+          <section class="weather-card glass-card" id="weather-card" aria-labelledby="current-heading">
+            <div class="weather-skeleton" aria-hidden="true" hidden>
+              <span class="skeleton-line skeleton-eyebrow"></span>
+              <span class="skeleton-line skeleton-city"></span>
+              <span class="skeleton-line skeleton-country"></span>
+              <span class="skeleton-line skeleton-temperature"></span>
+              <span class="skeleton-line skeleton-condition"></span>
+              <span class="skeleton-line skeleton-detail"></span>
+            </div>
             <div class="hero-copy">
               <p class="eyebrow" id="current-heading">CURRENT WEATHER</p>
-              <h1 class="city-name" id="city-name">—</h1>
-              <p class="country-name" id="country-name"></p>
+              <div class="city-heading">
+                <h1 class="city-name" id="city-name">—</h1>
+                <button class="favorite-toggle" id="favorite-toggle" type="button" aria-pressed="false" aria-label="Add current city to favourites" disabled>☆</button>
+              </div>
+              <p class="country-name" id="country-name"> </p>
               <div class="temperature-line">
                 <span class="temperature" id="temperature">—</span>
                 <span class="condition-icon" id="condition-icon" aria-hidden="true"></span>
@@ -115,7 +132,7 @@
           </div>
           <p class="favorites-intro">A few places close to your heart.</p>
           <ul class="favorites-list" id="favorites-list"></ul>
-          <p class="favorites-footnote">Choose a city to see its forecast</p>
+          <p class="favorites-footnote" id="favorites-empty">Choose the ☆ on a city to save it here.</p>
         </aside>
       </main>
 

@@ -4,6 +4,8 @@ const forecastContainer = document.querySelector("#forecast-grid");
 const favoritesContainer = document.querySelector("#favorites-list");
 const cityResults = document.querySelector("#city-results");
 const unitToggle = document.querySelector("#unit-toggle");
+const weatherCard = document.querySelector("#weather-card");
+const weatherSkeleton = weatherCard.querySelector(".weather-skeleton");
 const unitStorageKey = "solstice-temperature-unit";
 let temperatureUnit = "C";
 let lastWeather;
@@ -85,6 +87,39 @@ export function renderWeather(city, forecast) {
   renderForecast(forecast.daily);
 }
 
+export function setLoading(isLoading) {
+  const forecastIsSkeleton = Boolean(forecastContainer.querySelector(".forecast-skeleton"));
+  weatherCard.setAttribute("aria-busy", String(isLoading));
+  weatherSkeleton.hidden = !isLoading;
+  forecastContainer.setAttribute("aria-busy", String(isLoading));
+  if (isLoading) {
+    forecastContainer.replaceChildren(
+      ...Array.from({ length: 7 }, () => {
+        const card = document.createElement("article");
+        card.className = "forecast-card forecast-skeleton";
+        card.setAttribute("aria-hidden", "true");
+
+        for (const className of ["skeleton-forecast-day", "skeleton-forecast-icon", "skeleton-forecast-temperature"]) {
+          const placeholder = document.createElement("span");
+          placeholder.className = `skeleton-forecast-line ${className}`;
+          card.append(placeholder);
+        }
+
+        return card;
+      }),
+    );
+    return;
+  }
+
+  if (!forecastIsSkeleton) return;
+
+  if (lastWeather) {
+    renderForecast(lastWeather.forecast.daily);
+  } else {
+    forecastContainer.replaceChildren();
+  }
+}
+
 export function getTemperatureUnit() {
   try {
     const storedUnit = localStorage.getItem(unitStorageKey);
@@ -144,14 +179,17 @@ export function hideCityChoices() {
 }
 
 export function renderFavorites(favorites, activeCity) {
+  document.querySelector("#favorites-empty").hidden = favorites.length > 0;
   favoritesContainer.replaceChildren(
-    ...favorites.map((cityName) => {
+    ...favorites.map((favorite, index) => {
       const item = document.createElement("li");
       const button = document.createElement("button");
       button.className = "favorite-button";
       button.type = "button";
-      button.dataset.city = cityName;
-      button.setAttribute("aria-current", String(cityName.toLocaleLowerCase() === activeCity.toLocaleLowerCase()));
+      button.dataset.favoriteIndex = String(index);
+      button.setAttribute("aria-current", String(
+        favorite.latitude === activeCity?.latitude && favorite.longitude === activeCity?.longitude,
+      ));
 
       const icon = document.createElement("span");
       icon.className = "favorite-weather-icon";
@@ -161,10 +199,10 @@ export function renderFavorites(favorites, activeCity) {
       const details = document.createElement("span");
       const city = document.createElement("span");
       city.className = "favorite-city";
-      city.textContent = cityName;
+      city.textContent = favorite.name;
       const country = document.createElement("span");
       country.className = "favorite-country";
-      country.textContent = "View forecast";
+      country.textContent = favorite.country || "Saved location";
       details.append(city, country);
 
       const arrow = document.createElement("span");
@@ -177,6 +215,17 @@ export function renderFavorites(favorites, activeCity) {
       return item;
     }),
   );
+}
+
+export function setFavoriteButton(isFavorite, cityName = "current city") {
+  const button = document.querySelector("#favorite-toggle");
+  button.textContent = isFavorite ? "★" : "☆";
+  button.setAttribute("aria-pressed", String(isFavorite));
+  button.setAttribute(
+    "aria-label",
+    `${isFavorite ? "Remove" : "Add"} ${cityName} ${isFavorite ? "from" : "to"} favourites`,
+  );
+  button.disabled = !lastWeather;
 }
 
 export function renderLocalTime(timezone) {
@@ -193,6 +242,10 @@ export function setStatus(message = "", isError = false) {
   const status = document.querySelector("#status-message");
   const error = document.querySelector("#error-message");
 
+  status.classList.toggle(
+    "loading-status",
+    !isError && (message.startsWith("Loading") || message.startsWith("Finding")),
+  );
   status.textContent = isError ? "" : message;
   error.textContent = isError ? message : "";
 }
